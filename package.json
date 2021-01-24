@@ -1,0 +1,14 @@
+{
+  "name": "node-red-jupyter-client",
+  "node-red": {
+    "nodes": {
+      "jupyter-client": "lib/jupyter-client.js"
+    }
+  },
+  "version": "0.0.2",
+  "dependencies": {
+    "@types/zeromq": "^4.6.3",
+    "uuid": "^8.3.2",
+    "zeromq": "^5.2.0"
+  }
+}

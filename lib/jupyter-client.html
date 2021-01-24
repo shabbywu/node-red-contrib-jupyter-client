@@ -1,0 +1,165 @@
+<!-- Load polyfills to support older browsers -->
+<script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CIntersectionObserver" crossorigin="anonymous"></script>
+
+<!-- Load Vue followed by BootstrapVue -->
+<script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
+
+
+<!-- For JSON-RPC-CLI START -->
+<script type="text/html" data-template-name="代码执行">
+    <div id="template-of-json-rpc-cli">
+        <div class="form-row">
+            <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="label.name"></span></label>
+            <input type="text" id="node-input-name" data-i18n="[placeholder]label.name" v-model="name">
+        </div>
+        <div class="form-row" style="margin-bottom: 0px;">
+            <label for="node-input-code"><i class="fa fa-wrench"></i> <span data-i18n="label.code">Function</span></label>
+            <input type="hidden" id="node-input-code" autofocus="autofocus" v-model="code">
+            <div style="position: absolute; right:0;display:inline-block; text-align: right; font-size: 0.8em;">
+                <span data-i18n="label.language"></span>:
+                <select id="node-input-language" style="width:110px; font-size: 10px !important;  height: 24px; padding:0;" v-model="language">
+                    <option value="javascript">Javascript</option>
+                    <option value="python3">Python3</option>
+                </select>
+                <button @click="expandEditor" class="red-ui-button red-ui-button-small"><i class="fa fa-expand"></i></button>
+            </div>
+        </div>
+        <div class="form-row node-text-editor-row">
+            <div style="height: 250px; min-height:150px;" class="node-text-editor" ref="code-editor" ></div>
+        </div>
+        <div class="form-row">
+            <label for="node-input-outputs"><i class="fa fa-random"></i> <span>Outputs</span></label>
+            <input ref="node-input-outputs" style="width: 60px;" value="1">
+        </div>
+        <div class="form-tips"><span>See the Info tab for help writing Python functions</span></div>
+    </div>
+</script>
+
+<script type="text/javascript">
+    const createObjectElement = RED.utils.createObjectElement
+    function imageAbleCreateObjectElement (obj, options) {
+        if (typeof obj !== 'object' || obj.type != 'image' || obj.base64 === undefined || obj.format === undefined) {
+            return createObjectElement(obj, options);
+        }
+        return $(`<img src=''data:${obj.format};base64,${obj.base64}/>`);
+    }
+
+    RED.nodes.registerType('代码执行', {
+        category: 'function',
+        color: '#fdd0a2',
+        defaults: {
+            name: {value: ""},
+            language: {"value": "python3"},
+            code: {value: "# 系统会注入变量: `NODE_RED_MSG`, 可以直接使用\n"},
+            outputs: {value: 1}  // Ofuscated way to persist the number of outputs of the node
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "function.png",
+        label: function() {
+            return this.name || `${this.language}代码执行`;
+        },
+        oneditprepare: function() {
+            let languageModeMap = {
+                'python3': 'python',
+                'javascript': 'javascript'
+            }
+            let app = new Vue({
+                el: '#template-of-json-rpc-cli',
+                data: {
+                    name: this.name,
+                    code: this.code,
+                    language: this.language,
+                    noerr: this.noerr,
+                    editor: undefined
+                },
+                methods: {
+                    expandEditor (event) {
+                        event.preventDefault();
+                        var value = this.editor.getValue();
+                        RED.editor.editText({
+                            mode: this.language,
+                            value: value,
+                            width: "Infinity",
+                            cursor: this.editor.getCursorPosition(),
+                            complete: function(v, cursor) {
+                                this.editor.setValue(v, -1);
+                                this.editor.gotoLine(cursor.row + 1, cursor.column, false);
+                                setTimeout(function() {
+                                    this.editor.focus();
+                                },300);
+                            }
+                        })
+                    },
+                },
+                watch: {
+                    language: function () {
+                        if (this.editor) {
+                            this.editor.getSession().setMode(`ace/mode/${languageModeMap[this.language]}`);
+                        }
+                    }
+                },
+                mounted: function () {
+                    if (this.editor === undefined) {
+                        // 初始化 editor
+                        this.editor = ace.edit(this.$refs["code-editor"]);
+                        this.editor.getSession().setMode(`ace/mode/${languageModeMap[this.language]}`);
+                        this.editor.setValue(this.code, -1);
+                        this.editor.setOptions({
+                                enableBasicAutocompletion: true,
+                                enableLiveAutocompletion: true,
+                                highlightSelectedWord: true,
+                                useSoftTabs: true,
+                                tabSize: 4,
+                        });
+                        var langTools = ace.require('ace/ext/language_tools');
+                        var noderedKeywords = [
+                            'NODE_RED_MSG', "payload"
+                        ];
+                        this.editor.completers.push({
+                            getCompletions: function (state, session, pos, prefix, callback) {
+                                callback(null, noderedKeywords.map(function (word) {
+                                    return {
+                                        name: word,
+                                        value: word,
+                                        score: 0,
+                                        meta: 'Node-RED'
+                                    };
+                                }));
+                            }
+                        });
+
+                        this.editor.getSession().on('change', () => {
+                            this.code = this.editor.getValue()
+                        })
+                        
+                    }
+                    this.editor.focus();
+                    $(this.$refs["node-input-outputs"]).spinner({
+                        min:1
+                    });
+                }
+            })
+            this.app = app
+        },
+        oneditsave: function() {
+        },
+        oneditresize: function(size) {
+            var rows = $("#dialog-form>div:not(.node-text-editor-row)");
+            var height = $("#dialog-form").height();
+            for (var i=0;i<rows.size();i++) {
+                height -= $(rows[i]).outerHeight(true);
+            }
+            var editorRow = $("#dialog-form>div.node-text-editor-row");
+            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+            $(".node-text-editor").css("height",height+"px");
+            this.app.editor.resize();
+        }
+    });
+</script>
+
+<script type="text/x-red" data-help-name="代码执行">
+    <p>See the <a target="_new" href="http://nodered.org/docs/writing-functions.html">online documentation</a> for more help.</p>
+</script>
+
+<!-- For JSON-RPC-CLI END -->

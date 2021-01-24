@@ -1,0 +1,11 @@
+{
+    "label": {
+        "payload": "Payload",
+        "topic": "Topic",
+        "name": "Name",
+        "code": "Code",
+        "language": "Language",
+        "input": "input",
+        "expand": "Expand"
+    }
+}
