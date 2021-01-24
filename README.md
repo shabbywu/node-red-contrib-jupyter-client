@@ -1,4 +1,4 @@
-Remote Function NodeRED Node
+Remote Function NodeRED Node(base on IPython protocol)
 =============================
 
 基于 IPython 消息协议, 支持执行异构脚本语言的代码. 后端使用 ZeroMQ 进行通讯.
