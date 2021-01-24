@@ -41,8 +41,9 @@
         if (typeof obj !== 'object' || obj.type != 'image' || obj.base64 === undefined || obj.format === undefined) {
             return createObjectElement(obj, options);
         }
-        return $(`<img src=''data:${obj.format};base64,${obj.base64}/>`);
+        return $(`<img src='data:${obj.format};base64,${obj.base64}'/>`);
     }
+    RED.utils.createObjectElement = imageAbleCreateObjectElement
 
     RED.nodes.registerType('代码执行', {
         category: 'function',
